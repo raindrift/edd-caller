@@ -8,6 +8,11 @@ gem 'shotgun'
 gem 'pry'
 gem 'bcrypt'
 gem 'tux'
+gem 'twilio-ruby'
+gem 'redis'
+gem 'mock_redis'
+gem 'dotenv'
+gem 'timecop'
 
 group :test do
   gem 'rspec'

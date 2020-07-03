@@ -1,0 +1,93 @@
+require 'twilio-ruby'
+require_relative "spec_helper"
+
+describe CallStatusController do
+
+  # spy on redis so we can get access to the same instance
+  let(:redis) { MockRedis.new }
+  before do
+    allow_any_instance_of(ApplicationController).to receive(:connect_redis).and_return(redis)
+  end
+
+  after do
+    Timecop.return
+  end
+
+  describe 'sms_incoming' do
+    let(:client) do
+      double(:client,
+        calls: double(:calls, create: double(:call, sid: 'MockCallSid')),
+        messages: double(:messages, create: double(:message)),
+      )
+    end
+
+    before do
+      allow(Twilio::REST::Client).to receive(:new).and_return(client)
+      allow(ENV).to receive(:fetch).with('URL').and_return('https://app')
+      allow(ENV).to receive(:fetch).with('MAIN_NUMBER').and_return('+19998887777')
+
+      redis.set("caller-MockCallSid", '+12223334444')
+    end
+
+    context "with correct values in redis" do
+      context "with a long call" do
+        before do
+          Timecop.freeze(Time.local(2020, 1, 1, 12, 0, 0))
+          redis.set("call_count-12223334444", "1")
+        end
+
+        it "stops calling and texts to say we are done (main)" do
+          expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Looks like maybe you got through?/)
+          redis.set('active-12223334444', "main")
+
+          post '/call_status/main', Duration: 180, CallSid: 'MockCallSid'
+          expect(redis.lindex("successes-main", -1)).to eq('20200101120000:1')
+        end
+
+        it "stops calling and texts to say we are done (online)" do
+          expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Looks like maybe you got through?/)
+          redis.set('active-12223334444', "online")
+
+          post '/call_status/online', Duration: 50, CallSid: 'MockCallSid'
+          expect(redis.lindex("successes-online", -1)).to eq('20200101120000:1')
+        end
+      end
+
+      context "with a short call" do
+        it "tries again (main)" do
+          expect_any_instance_of(ApplicationController).to receive(:call_edd).with(:main, '+12223334444')
+          redis.set('active-12223334444', "main")
+
+          post '/call_status/main', Duration: 160, CallSid: 'MockCallSid'
+        end
+
+        it "tries again (online)" do
+          expect_any_instance_of(ApplicationController).to receive(:call_edd).with(:online, '+12223334444')
+          redis.set('active-12223334444', "online")
+
+          post '/call_status/online', Duration: 30, CallSid: 'MockCallSid'
+        end
+      end
+
+      context "when it is after hours" do
+        it "stops calling and texts to say meh next time (main)"
+        it "stops calling and texts to say meh next time (online)"
+      end
+
+      context "when the user has said they are done" do
+        it "does not call" do
+          expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /We made 10 calls for you this time./)
+          expect_any_instance_of(ApplicationController).to_not receive(:call_edd)
+          redis.set('call_count-12223334444', "10")
+          # active is not set
+          post '/call_status/online', Duration: 30, CallSid: 'MockCallSid'
+        end
+      end
+    end
+
+    context "with missing call data" do
+      it "fails in some reasonable way"
+    end
+  end
+
+end

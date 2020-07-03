@@ -4,6 +4,7 @@ require_relative '../config/environment'
 require 'rack/test'
 require 'capybara/rspec'
 require 'capybara/dsl'
+require 'timecop'
 
 
 RSpec.configure do |config|
