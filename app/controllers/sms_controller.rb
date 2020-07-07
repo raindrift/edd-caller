@@ -1,5 +1,5 @@
 class SmsController < ApplicationController
-  MENU = "Here is what you can do:\nMAIN - Call EDD's main UI line (8-noon M-F)\nONLINE - Call EDD Online Support (8am-8pm 7days)\nDONE - Stop calling\nSTATUS - See your call stauts\nFAQ - Frequent questions and answers"
+  MENU = "Here is what you can do:\nMAIN - Call EDD's main UI line (8-noon M-F)\nONLINE - Call EDD Online Support (8am-8pm 7days)\nDONE - Stop calling\nSTATUS - See what the bot is up to on your behalf\nFAQ - Frequent questions and answers"
 
   post "/incoming_sms" do
     # TODO:
