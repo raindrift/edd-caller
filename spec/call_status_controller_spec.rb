@@ -51,7 +51,7 @@ describe CallStatusController do
           expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Looks like maybe you got through?/)
           redis.set('active-12223334444', "online")
 
-          post '/call_status/online', Duration: 50, CallSid: 'MockCallSid'
+          post '/call_status/online', Duration: 120, CallSid: 'MockCallSid'
           expect(redis.lindex("successes-online", -1)).to eq('20200101120000:1')
         end
       end
