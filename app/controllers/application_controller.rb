@@ -1,6 +1,7 @@
 require './config/environment'
 require 'twilio-ruby'
 require "redis"
+require 'tzinfo'
 require "mock_redis"
 
 class ApplicationController < Sinatra::Base
@@ -86,5 +87,18 @@ class ApplicationController < Sinatra::Base
   def call_count_report client_number
     call_count = redis.get("call_count-#{strip_number(client_number)}")
     return "We made #{call_count} calls for you this time."
+  end
+
+  def after_hours? label
+    tz = TZInfo::Timezone.get('US/Pacific')
+    now = tz.to_local(Time.now)
+    return true if now.hour < 8
+    if label == :main
+      return true if now.hour > 12
+      return true if now.saturday? or now.sunday?
+    else
+      return true if now.hour > 20
+    end
+    return false
   end
 end

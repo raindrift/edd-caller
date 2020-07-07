@@ -1,5 +1,5 @@
 class SmsController < ApplicationController
-  post "/sms_incoming" do
+  post "/incoming_sms" do
     # TODO:
     # figure out if the texter is legit
     # assign a number from a pool
@@ -33,6 +33,10 @@ class SmsController < ApplicationController
   end
 
   def start_calling label, client_number
+    if after_hours? label
+      sms client_number, "That line is closed right now. Main is 8am-noon M-F, and Online Support is 8am-8pm 7 days (Pacific time)"
+      return false
+    end
     number_stripped = strip_number(client_number)
     active = redis.get("active-#{number_stripped}")
     if active

@@ -6,13 +6,18 @@ class CallStatusController < ApplicationController
     number_stripped = strip_number(client_number)
     label = params['label'].to_sym
 
+    if after_hours? label
+      sms client_number, "The number we were calling is now closed. Try again soon? #{call_count_report(client_number)}"
+      call_count = redis.get("call_count-#{strip_number(client_number)}")
+      redis.lpush("failures-#{label}", "#{Time.now.strftime('%Y%m%d%H%M%S')}:#{call_count}")
+      return
+    end
+
     if label == :main
       max_retry_duration = 170
     else
       max_retry_duration = 40
     end
-
-    # TODO: check after hours & user finished here
 
     active = redis.get("active-#{number_stripped}")
     if not active

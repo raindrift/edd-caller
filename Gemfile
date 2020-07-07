@@ -13,6 +13,7 @@ gem 'redis'
 gem 'mock_redis'
 gem 'dotenv'
 gem 'timecop'
+gem 'tzinfo'
 
 group :test do
   gem 'rspec'

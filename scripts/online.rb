@@ -6,8 +6,6 @@ require 'dotenv'
 
 Dotenv.load
 
-# Your Account Sid and Auth Token from twilio.com/console
-# DANGER! This is insecure. See http://twil.io/secure
 account_sid = ENV.fetch('TWILIO_ACCOUNT_SID')
 auth_token = ENV.fetch('TWILIO_AUTH_TOKEN')
 client = Twilio::REST::Client.new(account_sid, auth_token)
@@ -18,13 +16,13 @@ edd_online_tree = "https://f1d45a2d190e.ngrok.io/call_online/#{to}"
 
 while true
   call = client.calls.create(
-                         url: edd_online_tree,
-                         to: '+18339782511', # edd online
-                         # url: edd_main_tree,
-                         # to: '+18003005616', # edd main
-                         # to: '+14152408408', # edd main
-                         from: '+14152235261'
-                       )
+    url: edd_online_tree,
+    to: '+18339782511', # edd online
+    # url: edd_main_tree,
+    # to: '+18003005616', # edd main
+    # to: '+14152408408', # edd main
+    from: '+14152235261'
+  )
 
 
   sid = call.sid

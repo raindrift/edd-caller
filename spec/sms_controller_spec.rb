@@ -1,5 +1,6 @@
 require 'twilio-ruby'
 require 'mock_redis'
+require 'tzinfo'
 require_relative "spec_helper"
 
 describe SmsController do
@@ -10,7 +11,11 @@ describe SmsController do
     allow_any_instance_of(ApplicationController).to receive(:connect_redis).and_return(redis)
   end
 
-  describe 'sms_incoming' do
+  after do
+    Timecop.return
+  end
+
+  describe 'incoming_sms' do
     let(:client) do
       double(:client,
         calls: double(:calls, create: double(:call, sid: 'MockCallSid')),
@@ -27,78 +32,130 @@ describe SmsController do
     context 'with an informational command' do
       it 'responds to hello' do
         expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Welcome to EDDbot/)
-        post '/sms_incoming', Body: 'hello', From: '+12223334444'
+        post '/incoming_sms', Body: 'hello', From: '+12223334444'
       end
 
       it 'responds to faq' do
         expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Welcome to EDDbot/)
-        post '/sms_incoming', Body: 'faq', From: '+12223334444'
+        post '/incoming_sms', Body: 'faq', From: '+12223334444'
       end
     end
 
     context 'with an unrecognized command' do
       it 'responds with the list of commands' do
         expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Unrecognized/)
-        post '/sms_incoming', Body: 'foo', From: '+12223334444'
+        post '/incoming_sms', Body: 'foo', From: '+12223334444'
       end
     end
 
-    it 'initiates a call to the main number' do
-      expect(client.calls).to receive(:create).with(
-        url: "https://app/call_main/12223334444",
-        to: '+18003005616',  # main
-        from: '+19998887777',
-        status_callback: 'https://app/call_status/main',
-      )
+    context 'during business hours' do
+      before do
+        tz = TZInfo::Timezone.get('US/Pacific')
+        now = tz.local_time(2020, 01, 01, 9, 0, 0)
+        Timecop.freeze(now)
+      end
 
-      expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Calling EDD main/)
-      expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /a call back/)
+      it 'initiates a call to the main number' do
+        expect(client.calls).to receive(:create).with(
+          url: "https://app/call_main/12223334444",
+          to: '+18003005616',  # main
+          from: '+19998887777',
+          status_callback: 'https://app/call_status/main',
+        )
 
-      post '/sms_incoming', Body: 'main', From: '+12223334444'
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Calling EDD main/)
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /a call back/)
+
+        post '/incoming_sms', Body: 'main', From: '+12223334444'
+      end
+
+      it 'initiates a call to online support' do
+        expect(client.calls).to receive(:create).with(
+          url: "https://app/call_online/12223334444",
+          to: '+18339782511',  # online support
+          from: '+19998887777',
+          status_callback: 'https://app/call_status/online',
+        )
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Calling EDD Online Support/)
+        post '/incoming_sms', Body: 'online', From: '+12223334444'
+      end
+
+      it 'sets appropriate keys in redis' do
+        post '/incoming_sms', Body: 'main', From: '+12223334444'
+
+        expect(redis.get("current_call-12223334444")).to eq('MockCallSid')
+        expect(redis.get("caller-MockCallSid")).to eq('+12223334444')
+        expect(redis.get('call_count-12223334444')).to eq("1")
+        expect(redis.get('active-12223334444')).to eq("main")
+      end
+
+      it 'does not allow a user to be calling from multiple queues at once' do
+        redis.set('active-12223334444', "main")
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /We are already making calls for you/)
+        expect_any_instance_of(ApplicationController).to_not receive(:call_edd)
+        post '/incoming_sms', Body: 'main', From: '+12223334444'
+      end
+
+      it 'is possible to turn off calling' do
+        redis.set('active-12223334444', "main")
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /We will stop calling for you/)
+        post '/incoming_sms', Body: 'done', From: '+12223334444'
+        expect(redis.get("active-12223334444")).to be_nil
+      end
+
+      it 'reports current status' do
+        redis.set('active-12223334444', "main")
+        redis.set('call_count-12223334444', "10")
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', "Currently calling: main\nCalls so far: 10")
+        post '/incoming_sms', Body: 'status', From: '+12223334444'
+      end
     end
 
-    it 'initiates a call to online support' do
-      expect(client.calls).to receive(:create).with(
-        url: "https://app/call_online/12223334444",
-        to: '+18339782511',  # online support
-        from: '+19998887777',
-        status_callback: 'https://app/call_status/online',
-      )
-      expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Calling EDD Online Support/)
-      post '/sms_incoming', Body: 'online', From: '+12223334444'
+    context 'when after hours for the main queue' do
+      before do
+        tz = TZInfo::Timezone.get('US/Pacific')
+        now = tz.local_time(2020, 1, 1, 13, 0, 0)
+        Timecop.freeze(now)
+      end
+
+      it 'does not allow calling' do
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /That line is closed/)
+        post '/incoming_sms', Body: 'main', From: '+12223334444'
+      end
     end
 
-    it 'sets appropriate keys in redis' do
-      post '/sms_incoming', Body: 'main', From: '+12223334444'
+    context 'on a weekend' do
+      before do
+        tz = TZInfo::Timezone.get('US/Pacific')
+        now = tz.local_time(2020, 1, 4, 11, 0, 0)
+        Timecop.freeze(now)
+      end
 
-      expect(redis.get("current_call-12223334444")).to eq('MockCallSid')
-      expect(redis.get("caller-MockCallSid")).to eq('+12223334444')
-      expect(redis.get('call_count-12223334444')).to eq("1")
-      expect(redis.get('active-12223334444')).to eq("main")
+      it 'does not allow calling main' do
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /That line is closed/)
+        post '/incoming_sms', Body: 'main', From: '+12223334444'
+      end
+
+      it 'allows calling online' do
+        expect_any_instance_of(ApplicationController).to_not receive(:sms).with('+12223334444', /That line is closed/)
+        post '/incoming_sms', Body: 'online', From: '+12223334444'
+      end
+    end
+
+    context 'when after hours for online queue' do
+      before do
+        tz = TZInfo::Timezone.get('US/Pacific')
+        now = tz.local_time(2020, 01, 01, 21, 0, 0)
+        Timecop.freeze(now)
+      end
+
+      it 'does not allow calling' do
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /That line is closed/)
+        post '/incoming_sms', Body: 'online', From: '+12223334444'
+      end
     end
 
     it 'assigns an available number from the pool'
-
-    it 'does not allow a user to be calling from multiple queues at once' do
-      redis.set('active-12223334444', "main")
-      expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /We are already making calls for you/)
-      expect_any_instance_of(ApplicationController).to_not receive(:call_edd)
-      post '/sms_incoming', Body: 'main', From: '+12223334444'
-    end
-
-    it 'is possible to turn off calling' do
-      redis.set('active-12223334444', "main")
-      expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /We will stop calling for you/)
-      post '/sms_incoming', Body: 'done', From: '+12223334444'
-      expect(redis.get("active-12223334444")).to be_nil
-    end
-
-    it 'reports current status' do
-      redis.set('active-12223334444', "main")
-      redis.set('call_count-12223334444', "10")
-      expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', "Currently calling: main\nCalls so far: 10")
-      post '/sms_incoming', Body: 'status', From: '+12223334444'
-    end
 
     it 'gracefully handles concurrent commands'
 

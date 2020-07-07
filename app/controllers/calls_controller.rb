@@ -8,4 +8,8 @@ class CallsController < ApplicationController
     number = normalize_number(params['number'])
     erb :call_online, layout: nil, locals: {number: number}
   end
+
+  post "/incoming_call" do
+    erb :incoming_call, layout: nil
+  end
 end

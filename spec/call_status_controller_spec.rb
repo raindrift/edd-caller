@@ -1,4 +1,5 @@
 require 'twilio-ruby'
+require 'tzinfo'
 require_relative "spec_helper"
 
 describe CallStatusController do
@@ -30,12 +31,14 @@ describe CallStatusController do
     end
 
     context "with correct values in redis" do
-      context "with a long call" do
-        before do
-          Timecop.freeze(Time.local(2020, 1, 1, 12, 0, 0))
-          redis.set("call_count-12223334444", "1")
-        end
+      before do
+        tz = TZInfo::Timezone.get('US/Pacific')
+        now = tz.local_time(2020, 1, 1, 12, 0, 0)
+        Timecop.freeze(now)
+        redis.set("call_count-12223334444", "1")
+      end
 
+      context "with a long call" do
         it "stops calling and texts to say we are done (main)" do
           expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Looks like maybe you got through?/)
           redis.set('active-12223334444', "main")
@@ -70,8 +73,28 @@ describe CallStatusController do
       end
 
       context "when it is after hours" do
-        it "stops calling and texts to say meh next time (main)"
-        it "stops calling and texts to say meh next time (online)"
+        before do
+          tz = TZInfo::Timezone.get('US/Pacific')
+          now = tz.local_time(2020, 1, 1, 7, 0, 0)
+          Timecop.freeze(now)
+          redis.set("call_count-12223334444", "1")
+        end
+
+        it "stops calling and texts to say meh next time (main)" do
+          expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /The number we were calling is now closed/)
+          redis.set('active-12223334444', "main")
+
+          post '/call_status/main', Duration: 50, CallSid: 'MockCallSid'
+          expect(redis.lindex("failures-main", -1)).to eq('20200101070000:1')
+        end
+
+        it "stops calling and texts to say meh next time (online)" do
+          expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /The number we were calling is now closed/)
+          redis.set('active-12223334444', "online")
+
+          post '/call_status/online', Duration: 50, CallSid: 'MockCallSid'
+          expect(redis.lindex("failures-online", -1)).to eq('20200101070000:1')
+        end
       end
 
       context "when the user has said they are done" do
