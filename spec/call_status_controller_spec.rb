@@ -58,14 +58,14 @@ describe CallStatusController do
 
       context "with a short call" do
         it "tries again (main)" do
-          expect_any_instance_of(ApplicationController).to receive(:call_edd).with(:main, '+12223334444')
+          expect_any_instance_of(ApplicationController).to receive(:call_edd).with(:main, '+12223334444', false)
           redis.set('active-12223334444', "main")
 
           post '/call_status/main', Duration: 160, CallSid: 'MockCallSid'
         end
 
         it "tries again (online)" do
-          expect_any_instance_of(ApplicationController).to receive(:call_edd).with(:online, '+12223334444')
+          expect_any_instance_of(ApplicationController).to receive(:call_edd).with(:online, '+12223334444', false)
           redis.set('active-12223334444', "online")
 
           post '/call_status/online', Duration: 30, CallSid: 'MockCallSid'

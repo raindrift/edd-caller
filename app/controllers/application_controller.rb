@@ -53,7 +53,7 @@ class ApplicationController < Sinatra::Base
     )
   end
 
-  def call_edd label, client_number
+  def call_edd label, client_number, should_report = true
     main_number = ENV.fetch('MAIN_NUMBER')
 
     if label == :main
@@ -77,10 +77,12 @@ class ApplicationController < Sinatra::Base
     redis.set("caller-#{call.sid}", client_number, ex: 60 * 60 * 4) # TTL 4 hours
     redis.incr("call_count-#{strip_number(client_number)}")
 
-    sms client_number, "Calling #{pretty_number}. Expect a call from #{main_number}. Reply with DONE to stop calling.\n"
+    if should_report
+      sms client_number, "Calling #{pretty_number}. Expect a call from #{main_number}. Reply with DONE to stop calling.\n"
 
-    if label == :main
-      sms client_number, "If you're offered the option to get a call back, choose the option to manually enter your phone number. The number they detect will be wrong. They're good about calling back, but the call can come hours after they close (at noon)."
+      if label == :main
+        sms client_number, "If you're offered the option to get a call back, choose the option to manually enter your phone number. The number they detect will be wrong. They're good about calling back, but the call can come hours after they close (at noon)."
+      end
     end
   end
 

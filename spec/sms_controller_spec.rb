@@ -36,7 +36,7 @@ describe SmsController do
       end
 
       it 'responds to faq' do
-        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Welcome to EDDbot/)
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Do I have to wait on hold/)
         post '/incoming_sms', Body: 'faq', From: '+12223334444'
       end
     end
