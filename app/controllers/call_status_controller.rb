@@ -25,7 +25,7 @@ class CallStatusController < ApplicationController
       return
     end
 
-    if params['Duration'].to_i < max_retry_duration
+    if params['CallDuration'].to_i < max_retry_duration
       call_edd label, client_number, false
     else
       sms client_number, "Looks like maybe you got through? We'll stop trying, but you can restart any time (reply with MAIN or ONLINE). #{call_count_report(client_number)}"

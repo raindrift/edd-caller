@@ -43,7 +43,7 @@ describe CallStatusController do
           expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Looks like maybe you got through?/)
           redis.set('active-12223334444', "main")
 
-          post '/call_status/main', Duration: 180, CallSid: 'MockCallSid'
+          post '/call_status/main', CallDuration: 180, CallSid: 'MockCallSid'
           expect(redis.lindex("successes-main", -1)).to eq('20200101120000:1')
         end
 
@@ -51,7 +51,7 @@ describe CallStatusController do
           expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Looks like maybe you got through?/)
           redis.set('active-12223334444', "online")
 
-          post '/call_status/online', Duration: 120, CallSid: 'MockCallSid'
+          post '/call_status/online', CallDuration: 120, CallSid: 'MockCallSid'
           expect(redis.lindex("successes-online", -1)).to eq('20200101120000:1')
         end
       end
@@ -61,14 +61,14 @@ describe CallStatusController do
           expect_any_instance_of(ApplicationController).to receive(:call_edd).with(:main, '+12223334444', false)
           redis.set('active-12223334444', "main")
 
-          post '/call_status/main', Duration: 160, CallSid: 'MockCallSid'
+          post '/call_status/main', CallDuration: 160, CallSid: 'MockCallSid'
         end
 
         it "tries again (online)" do
           expect_any_instance_of(ApplicationController).to receive(:call_edd).with(:online, '+12223334444', false)
           redis.set('active-12223334444', "online")
 
-          post '/call_status/online', Duration: 30, CallSid: 'MockCallSid'
+          post '/call_status/online', CallDuration: 30, CallSid: 'MockCallSid'
         end
       end
 
@@ -84,7 +84,7 @@ describe CallStatusController do
           expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /The number we were calling is now closed/)
           redis.set('active-12223334444', "main")
 
-          post '/call_status/main', Duration: 50, CallSid: 'MockCallSid'
+          post '/call_status/main', CallDuration: 50, CallSid: 'MockCallSid'
           expect(redis.lindex("failures-main", -1)).to eq('20200101070000:1')
         end
 
@@ -92,7 +92,7 @@ describe CallStatusController do
           expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /The number we were calling is now closed/)
           redis.set('active-12223334444', "online")
 
-          post '/call_status/online', Duration: 50, CallSid: 'MockCallSid'
+          post '/call_status/online', CallDuration: 50, CallSid: 'MockCallSid'
           expect(redis.lindex("failures-online", -1)).to eq('20200101070000:1')
         end
       end
@@ -103,7 +103,7 @@ describe CallStatusController do
           expect_any_instance_of(ApplicationController).to_not receive(:call_edd)
           redis.set('call_count-12223334444', "10")
           # active is not set
-          post '/call_status/online', Duration: 30, CallSid: 'MockCallSid'
+          post '/call_status/online', CallDuration: 30, CallSid: 'MockCallSid'
         end
       end
     end
