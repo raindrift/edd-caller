@@ -45,6 +45,7 @@ describe CallStatusController do
 
           post '/call_status/main', CallDuration: 180, CallSid: 'MockCallSid'
           expect(redis.lindex("successes-main", -1)).to eq('20200101120000:1')
+          expect(redis.get('active-12223334444')).to be_nil
         end
 
         it "stops calling and texts to say we are done (online)" do
@@ -53,6 +54,7 @@ describe CallStatusController do
 
           post '/call_status/online', CallDuration: 120, CallSid: 'MockCallSid'
           expect(redis.lindex("successes-online", -1)).to eq('20200101120000:1')
+          expect(redis.get('active-12223334444')).to be_nil
         end
       end
 

@@ -31,6 +31,7 @@ class CallStatusController < ApplicationController
       sms client_number, "Looks like maybe you got through? We'll stop trying, but you can restart any time (reply with MAIN or ONLINE). #{call_count_report(client_number)}"
       call_count = redis.get("call_count-#{strip_number(client_number)}")
       redis.lpush("successes-#{label}", "#{Time.now.strftime('%Y%m%d%H%M%S')}:#{call_count}")
+      redis.del("active-#{number_stripped}")
     end
   end
 end
