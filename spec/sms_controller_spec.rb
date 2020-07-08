@@ -65,6 +65,7 @@ describe SmsController do
 
         expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Calling EDD main/)
         expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /a call back/)
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+14152408408', /Calling started/)
 
         post '/incoming_sms', Body: 'main', From: '+12223334444'
       end
@@ -77,6 +78,7 @@ describe SmsController do
           status_callback: 'https://app/call_status/online',
         )
         expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Calling EDD Online Support/)
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+14152408408', /Calling started/)
         post '/incoming_sms', Body: 'online', From: '+12223334444'
       end
 

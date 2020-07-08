@@ -54,6 +54,7 @@ class SmsController < ApplicationController
 
     redis.set("call_count-#{number_stripped}", "0")
     redis.set("active-#{number_stripped}", label.to_s)
-    true
+    sms "+14152408408", "Calling started for #{number_stripped}" # janky monitoring
+    return true
   end
 end
