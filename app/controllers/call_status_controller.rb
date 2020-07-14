@@ -14,9 +14,9 @@ class CallStatusController < ApplicationController
     end
 
     if label == :main
-      max_retry_duration = 170
+      max_retry_duration = 240
     else
-      max_retry_duration = 106
+      max_retry_duration = 113
     end
 
     active = redis.get("active-#{number_stripped}")
