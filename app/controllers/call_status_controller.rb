@@ -22,6 +22,7 @@ class CallStatusController < ApplicationController
     active = redis.get("active-#{number_stripped}")
     if not active
       sms client_number, call_count_report(client_number)
+      sms "+14152408408", "Success for #{number_stripped} / #{label} / #{call_count} calls" # janky monitoring
       return
     end
 
@@ -32,6 +33,7 @@ class CallStatusController < ApplicationController
       call_count = redis.get("call_count-#{strip_number(client_number)}")
       redis.lpush("successes-#{label}", "#{Time.now.strftime('%Y%m%d%H%M%S')}:#{call_count}")
       redis.del("active-#{number_stripped}")
+      sms "+14152408408", "Success for #{number_stripped} / #{label} / #{call_count} calls / #{params['CallDuration']} min" # janky monitoring
     end
   end
 end
