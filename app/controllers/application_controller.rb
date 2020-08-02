@@ -96,10 +96,10 @@ class ApplicationController < Sinatra::Base
     now = tz.to_local(Time.now)
     return true if now.hour < 8
     if label == :main
-      return true if now.hour > 12
+      return true if now.hour >= 12
       return true if now.saturday? or now.sunday?
     else
-      return true if now.hour > 20
+      return true if now.hour >= 20
     end
     return false
   end

@@ -14,17 +14,18 @@ class CallStatusController < ApplicationController
       return
     end
 
-    if label == :main
-      max_retry_duration = 240
-    else
-      max_retry_duration = 113
-    end
-
     active = redis.get("active-#{number_stripped}")
     if not active
       sms client_number, call_count_report(client_number)
       sms "+14152408408", "Success for #{number_stripped} / #{label} / #{call_count} calls" # janky monitoring
       return
+    end
+
+    # time it takes to call plus one minute of hold time
+    if label == :main
+      max_retry_duration = 278
+    else
+      max_retry_duration = 118
     end
 
     if params['CallDuration'].to_i < max_retry_duration
