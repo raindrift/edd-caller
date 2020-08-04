@@ -23,7 +23,7 @@ class CallStatusController < ApplicationController
 
     # time it takes to call plus one minute of hold time
     if label == :main
-      max_retry_duration = 278
+      max_retry_duration = 282
     else
       max_retry_duration = 118
     end
