@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="5"/>
-  <Play digits="1"></Play>
+  <Play digits="1"></Play> <!-- skip language selection -->
+  <Pause length="84"/> <!-- wait for intro message -->
+  <Play digits="1"></Play> <!--claims -->
+  <Pause length="4"/>
+  <Play digits="2"/> <!-- existing claim -->
   <Pause length="36"/>
-  <Play digits="#"></Play>
-  <Pause length="1"/>
-  <Play digits="1"></Play>
-  <Pause length="16"/>
+  <Play digits="1"/> <!-- unemployment questions -->
+  <Pause length="18"/> <!-- wait to get on hold -->
   <Dial>
     <Number>
       <%= number %>
