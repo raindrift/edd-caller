@@ -13,9 +13,10 @@ class SmsController < ApplicationController
 
     case body
     when 'main'
-      if start_calling :main, client_number
-        call_edd :main, client_number
-      end
+      sms client_number, "Right now the 'main' dialer is not working (Sorry! I'll fix it soon!). But the 'online' option should get you someone who can help. Try it instead?"
+      # if start_calling :main, client_number
+      #   call_edd :main, client_number
+      # end
     when 'online'
       if start_calling :online, client_number
         call_edd :online, client_number
