@@ -43,7 +43,7 @@ describe CallStatusController do
           expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Looks like maybe you got through?/)
           redis.set('active-12223334444', "main")
 
-          post '/call_status/main', CallDuration: 290, CallSid: 'MockCallSid'
+          post '/call_status/main', CallDuration: 500, CallSid: 'MockCallSid'
           expect(redis.lindex("successes-main", -1)).to eq('20200101110000:1')
           expect(redis.get('active-12223334444')).to be_nil
         end
@@ -52,7 +52,7 @@ describe CallStatusController do
           expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Looks like maybe you got through?/)
           redis.set('active-12223334444', "online")
 
-          post '/call_status/online', CallDuration: 120, CallSid: 'MockCallSid'
+          post '/call_status/online', CallDuration: 500, CallSid: 'MockCallSid'
           expect(redis.lindex("successes-online", -1)).to eq('20200101110000:1')
           expect(redis.get('active-12223334444')).to be_nil
         end
