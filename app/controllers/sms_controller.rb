@@ -17,6 +17,7 @@ class SmsController < ApplicationController
     if ! has_access?(number_stripped)
       sms client_number, "Hi! My name's Ian, and I made this bot for calling California EDD. I built it at the start of the pandemic for my partner when they couldn't get through, and then opened it up to friends and family. Recently, it made its way onto YouTube, and lots of people are trying to use it. It can't handle that kind of demand, so I've had to take it offline for now.\n\nI'm working on a fix so more people can use it. I saved your number, so when it's ready I'll text you and let you know. It could be a while though, since I'm just one person and I'm doing this in my spare time. Thanks for understanding. Good luck, and you'll hear from me soon. -Ian"
       redis.incr("rejected_count-#{number_stripped}")
+      sms "+14152408408", "Rejected #{number_stripped}"
       return
     end
 
