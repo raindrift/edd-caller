@@ -1,5 +1,6 @@
 class SmsController < ApplicationController
   MENU = "Here is what you can do:\nMAIN - Call EDD's main UI line (8-noon M-F)\nONLINE - Call EDD Online Support (8am-8pm 7days)\nDONE - Stop calling\nSTATUS - See what the bot is up to on your behalf\nFAQ - Frequent questions and answers"
+  WELCOME = "Welcome to EDDbot. Sometimes the California Employment Development Department is so busy you can't even get on hold, so you have to call them over and over all day. This bot does the redialing. When it thinks it's in the queue, it will call you back and connect the calls. You still have to wait on hold, though.\nTry the online support number first, since it is easier to reach and they can solve most issues.\n#{MENU}"
 
   post "/incoming_sms" do
     # TODO:
@@ -11,7 +12,15 @@ class SmsController < ApplicationController
     body.strip!
     number_stripped = strip_number(client_number)
 
-    case body
+    command, param = body.split(/\s/, 2)
+
+    if ! has_access?(number_stripped)
+      sms client_number, "Hi! My name's Ian, and I made this bot for calling California EDD. I built it at the start of the pandemic for my partner when they couldn't get through, and then opened it up to friends and family. Recently, it made its way onto YouTube, and lots of people are trying to use it. It can't handle that kind of demand, so I've had to take it offline for now.\n\nI'm working on a fix so more people can use it. I saved your number, so when it's ready I'll text you and let you know. It could be a while though, since I'm just one person and I'm doing this in my spare time. Thanks for understanding. Good luck, and you'll hear from me soon. -Ian"
+      redis.incr("rejected_count-#{number_stripped}")
+      return
+    end
+
+    case command
     when 'main'
       sms client_number, "Right now the 'main' dialer is not working (Sorry! I'll fix it soon!). But the 'online' option should get you someone who can help. Try it instead?"
       # if start_calling :main, client_number
@@ -35,7 +44,23 @@ class SmsController < ApplicationController
       sms client_number, "4/5 Can EDD call me back?\nFor the MAIN number, sometimes. But make sure to enter a callback number manually. The one they auto-detect will be wrong."
       sms client_number, "5/5 Who made this? What if I have issues?\nHi! I'm Ian. Text me at 415-240-8408."
     when 'hello'
-      sms client_number, "Welcome to EDDbot. Sometimes the California Employment Development Department is so busy you can't even get on hold, so you have to call them over and over all day. This bot does the redialing. When it thinks it's in the queue, it will call you back and connect the calls. You still have to wait on hold, though.\nTry the online support number first, since it is easier to reach and they can solve most issues.\n#{MENU}"
+      sms client_number, WELCOME
+    when 'add'
+      if number_stripped != "14152408408"
+        sms client_number, "Unrecognized command.\n#{MENU}"
+        return
+      end
+
+      new_number = normalize_number(param)
+      new_number_stripped = strip_number(new_number)
+      if !valid_us_pots_number?(new_number)
+        sms client_number, "Malformed number"
+        return
+      end
+
+      redis.set("call_count-#{new_number_stripped}", "0")
+      sms client_number, "Added #{new_number_stripped}"
+      sms new_number, WELCOME
     else
       sms client_number, "Unrecognized command.\n#{MENU}"
     end
@@ -57,5 +82,9 @@ class SmsController < ApplicationController
     redis.set("active-#{number_stripped}", label.to_s)
     sms "+14152408408", "Calling started for #{number_stripped} / #{label}" # janky monitoring
     return true
+  end
+
+  def has_access? number_stripped
+    return !! redis.get("call_count-#{number_stripped}")
   end
 end

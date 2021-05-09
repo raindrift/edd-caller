@@ -27,6 +27,8 @@ describe SmsController do
       allow(Twilio::REST::Client).to receive(:new).and_return(client)
       allow(ENV).to receive(:fetch).with('URL').and_return('https://app')
       allow(ENV).to receive(:fetch).with('MAIN_NUMBER').and_return('+19998887777')
+      redis.set("call_count-12223334444", "0")
+      redis.set("call_count-14152408408", "0")
     end
 
     context 'with an informational command' do
@@ -161,12 +163,31 @@ describe SmsController do
 
     it 'gracefully handles concurrent commands'
 
-    it 'checks a list of allowed callers'
+    it 'checks a list of allowed callers' do
+      expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223335555', /offline for now/)
+      post '/incoming_sms', Body: 'hello', From: '+12223335555'
+      expect(redis.get("rejected_count-#{12223335555}")).to eq("1")
+    end
 
-    it 'can add a number'
+    context "adding new callers" do
+      it 'can add a number for me, and sends a welcome message' do
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+14152408408', /Added 13334445555/)
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+13334445555', /Welcome to EDDbot/)
+        post '/incoming_sms', Body: 'add 333-444-5555', From: '+14152408408'
+        expect(redis.get("call_count-#{13334445555}")).to eq("0")
+      end
 
-    it 'texts the number that was added to invite them'
+      it 'rejects bad numbers' do
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+14152408408', /Malformed number/)
+        post '/incoming_sms', Body: 'add 333-444-555', From: '+14152408408'
+        expect(redis.get("call_count-#{1333444555}")).to eq(nil)
+      end
 
+      it 'cannnot add a number for anyone else' do
+        expect_any_instance_of(ApplicationController).to receive(:sms).with('+12223334444', /Unrecognized/)
+        post '/incoming_sms', Body: 'add 333-444-5555', From: '+12223334444'
+      end
+    end
   end
 
 end

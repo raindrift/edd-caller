@@ -10,3 +10,7 @@ end
 def strip_number value
   value.gsub(/^\+/, '')
 end
+
+def valid_us_pots_number? value
+  value =~ /^\+1\d{10}$/
+end
