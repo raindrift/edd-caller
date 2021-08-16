@@ -32,8 +32,13 @@ class SmsController < ApplicationController
         call_edd :online, client_number
       end
     when 'done'
-      sms client_number, "We will stop calling for you after the current attempt is finished."
-      redis.del("active-#{number_stripped}")
+      active = redis.get("active-#{number_stripped}")
+      if active
+        sms client_number, "We will stop calling for you after the current attempt is finished."
+        redis.del("active-#{number_stripped}")
+      else
+        sms client_number, "We are not calling for you right now"
+      end
     when 'status'
       label = redis.get("active-#{number_stripped}")
       call_count = redis.get("call_count-#{number_stripped}")
