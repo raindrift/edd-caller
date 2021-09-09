@@ -25,7 +25,7 @@ class CallStatusController < ApplicationController
     if label == :main
       max_retry_duration = 282
     else
-      max_retry_duration = 230
+      max_retry_duration = 245
     end
 
     if params['CallDuration'].to_i < max_retry_duration
